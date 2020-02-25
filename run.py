@@ -3,6 +3,7 @@
 import sys, os, time
 import numpy.random as rnd
 import argparse
+from machine import run_command
 parser = argparse.ArgumentParser(description='Tensorflow benchmarks')
 parser.add_argument('--model', default='alexnet', help='select models')
 try:
@@ -38,6 +39,7 @@ parser.add_argument("--memory_mode", default='Cache', help='memory model [Cache|
 parser.add_argument("--data_format", default="NCHW")
 parser.add_argument("--horovod_timeline", default=None)
 parser.add_argument("--mpi", default='craympi', help="Whether to use mpich version or not")
+parser.add_argument("--machine", default='theta', help='where to run')
 args = parser.parse_args()
 
 run={}
@@ -73,7 +75,6 @@ else:
     extra=""
 if args.trace_file != None:
     extra = extra + " --trace_file %s " %args.trace_file
-env=""
 def bytes(string):
     if string.find('m')!=-1:
         return int(string[:-1])*1024*1024
@@ -83,49 +84,53 @@ def bytes(string):
         return int(string[:-1])*1024*1024*1024
     else:
         return int(string)
+env = {'OMP_NUM_THREADS':args.omp}
 if args.trace_all_events:
-    env = env + " -e TRACE_ALL_EVENTS=yes " 
+    env['TRACE_ALL_EVENTS']='yes'
 if args.collective_barrier:
-    env = env + " -e COLLECTIVE_BARRIER=yes "
+    env['COLLECTIVE_BARRIER']='yes'
 if args.fusion_threshold!=None:
-    env = env + " -e HOROVOD_FUSION_THRESHOLD=%s" %bytes(args.fusion_threshold)
+    env['HOROVOD_FUSION_THRESHOLD']=args.fusion_threshold
 if args.vtune != None:
-    env = env + ' -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/intel/vtune_amplifier/lib64 amplxe-cl -collect %s -r %s -data-limit=10000 ' %(args.vtune, args.vtune)
+    env['LD_LIBRARY_PATH']='$LD_LIBRARY_PATH:/opt/intel/vtune_amplifier/lib64'
+    exe= "amplxe-cl -collect %s -r %s -data-limit=10000 ' %(args.vtune, args.vtune)" + exe
 if args.kmp_schedule != None:
-    env = env + ' -e KMP_SCHEDULE=%s,balanced -e OMP_SCHEDULE=%s' %(args.kmp_schedule, args.kmp_schedule)
+    env['KMP_SCHEDULE'] = "%s,balanced" %args.kmp_schedule 
+    env['OMP_SCHEDULE'] = "%s,balanced" %args.kmp_schedule 
 if args.mkldnn:
-    env = env + " -e MKLDNN_VERBOSE=2 "
+    env['MKLDNN_VERBOSE'] = 2
 if args.mkl:
-    env = env + " -e MKL_VERBOSE=1 "
+    env['MKL_VERBOSE'] = 1
 if args.horovod_timeline != None:
-    env = env + " -e HOROVOD_TIMELINE=%s " %args.horovod_timeline
+    env['HOROVOD_TIMELINE'] = args.horovod_timeline
 
+run_args = {}
+exe = 'python'
 if args.cc.find('unset')==-1:
-    cc = " -cc %s " %args.cc
-else:
-    cc=""
+    run_args['-cc']=args.cc
 memory=""
 if args.memory_mode.find("Flat_HBMp")!=-1:
-    memory="numactl -p 1"
+    exe = " numactl -p 1 " + exe
 elif args.memory_mode.find("Flat_HBM")!=-1:
-    memory="numactl -m 1"
+    exe =" numactl -m 1 " + exe
 elif args.memory_mode.find("Flat_DDR")!=-1:
-    memory="numactl -m 0"
+    exe = " numactl -m 0 " + exe
 elif args.memory_mode.find("Cache")!=-1:
-    memory=""
-else:
-    memory=""
-    print("Memory mode is not set, assuming Cache mode")
+    exe = exe
 if args.darshan:
-    env = env + " -e LD_PRELOAD=$DARSHAN_PRELOAD "
+    env["LD_PRELOAD"] = "$DARSHAN_PRELOAD"
 setup=args.version + " "  + args.mpi
+run_args = {'-n':args.num_nodes*args.ppn, '-N':args.ppn, '-j':2}
+cmd_tmp = run_command=run_command(run_args, env=env, exe=exe, machine=args.machine)
 
-cmd="source %s/setup.sh %s; module list; cd %s; aprun -n %s -N %s %s -d %s -j %s -e OMP_NUM_THREADS=%s %s %s python %s/v%s/tf_bench/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py --model=%s --batch_size=%s --num_batches=%s --forward_only=False  --data_format=%s --local_parameter_device=cpu --summary_verbosity=1 --num_intra_threads=%s --num_inter_threads=%s  --num_warmup_batches=10 --mkl=True --kmp_blocktime=%s --kmp_settings=1 --kmp_affinity=%s --variable_update=%s %s |& tee %s.log; cd -" %(args.root, setup, sdir, int(args.num_nodes*args.ppn), args.ppn, cc, args.omp, args.j, args.omp, env, memory, args.root, args.version, args.model, args.batch_size, args.num_batches, args.data_format, args.num_intra, args.num_inter, args.kmp_blocktime, args.kmp_affinity, args.variable_update, extra, jobid)
+
+cmd="source %s/setup.sh %s; module list; cd %s; %s %s/v%s/tf_bench/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py --model=%s --batch_size=%s --num_batches=%s --forward_only=False  --data_format=%s --local_parameter_device=cpu --summary_verbosity=1 --num_intra_threads=%s --num_inter_threads=%s  --num_warmup_batches=10 --mkl=True --kmp_blocktime=%s --kmp_settings=1 --kmp_affinity=%s --variable_update=%s %s |& tee %s.log; cd -" %(args.root, setup, sdir, cmd_tmp, args.root, args.version, args.model, args.batch_size, args.num_batches, args.data_format, args.num_intra, args.num_inter, args.kmp_blocktime, args.kmp_affinity, args.variable_update, extra, jobid)
 if args.vtune != None:
     cmd = 'source /opt/intel/vtune_amplifier/amplxe-vars.sh;' + cmd
 if (args.darshan):
     cmd = " module load darshan texlive; " + cmd
-print(cmd)
+print("Running the following command: ")
+print(" ", cmd)
 os.system(cmd)
 import json
 import numpy as np

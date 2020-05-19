@@ -23,5 +23,5 @@ aprun  -n 1 -N 1 -j 2 -cc depth -e OMP_NUM_THREADS=128 -e LD_PRELOAD=${DARSHAN_P
     --kmp_settings=1 \
     --kmp_affinity="granularity=fine,verbose,compact,1,0" \
     --variable_update=horovod \
-    --data_name=imagenet \
+    --data_name=imagenet \ # you can change model to inception, resnet, vgg, etc
     --data_dir=/projects/datascience/rzamora/data/imagenet/count.48.size.8m/ 

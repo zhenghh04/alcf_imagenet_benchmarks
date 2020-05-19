@@ -8,14 +8,14 @@ This repo includes some scripts for benchmarking ImageNet models at ALCF.
    > $ git submodule update --init --recursive
 
 2) checkout the right branch compitable to specific tensorflow version
-      
+       
    > $ cd tf_bench
    >
-   > $ git checkout cnn_tf_v$1_compatible
+   > $ git checkout cnn_tf_v1.15_compatible
    > 
    > $ cd -
    > 
-   > $ git clone -b cnn_tf_v$1_compatible tf_bench v$1/tf_bench
+   > $ git clone -b cnn_tf_v1.15_compatible tf_bench v1.15/tf_bench
 
 3) submission script: qsub.sc
    > $ qsub qsub.sc

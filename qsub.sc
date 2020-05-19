@@ -8,7 +8,7 @@ module load datascience/tensorflow-1.15
 export DARSHAN_PRELOAD=/soft/perftools/darshan/darshan-3.1.8/lib/libdarshan.so
 aprun  -n 1 -N 1 -j 2 -cc depth -e OMP_NUM_THREADS=128 -e LD_PRELOAD=${DARSHAN_PRELOAD} \
     python ./v1.15/tf_bench/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py \
-    --model=alexnet \
+    --model=alexnet \ # you can change model to inception, resnet, vgg, etc
     --batch_size=32 \
     --num_batches=100 \
     --forward_only=False  \
@@ -23,5 +23,5 @@ aprun  -n 1 -N 1 -j 2 -cc depth -e OMP_NUM_THREADS=128 -e LD_PRELOAD=${DARSHAN_P
     --kmp_settings=1 \
     --kmp_affinity="granularity=fine,verbose,compact,1,0" \
     --variable_update=horovod \
-    --data_name=imagenet \ # you can change model to inception, resnet, vgg, etc
+    --data_name=imagenet \ 
     --data_dir=/projects/datascience/rzamora/data/imagenet/count.48.size.8m/ 

@@ -6,7 +6,7 @@
 
 module load datascience/tensorflow-1.15
 export DARSHAN_PRELOAD=/soft/perftools/darshan/darshan-3.1.8/lib/libdarshan.so
-aprun  -n 1 -N 1  -j 2 -e OMP_NUM_THREADS=128 -e LD_PRELOAD=${DARSHAN_PRELOAD} \
+aprun  -n 1 -N 1 -j 2 -cc depth -e OMP_NUM_THREADS=128 -e LD_PRELOAD=${DARSHAN_PRELOAD} \
     python ./v1.15/tf_bench/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py \
     --model=alexnet \
     --batch_size=32 \

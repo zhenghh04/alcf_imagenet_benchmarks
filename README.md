@@ -5,7 +5,7 @@ Author: Huihuo Zheng <huihuo.zheng@anl.gov>
 This repo includes some scripts for benchmarking ImageNet models at ALCF. 
 
 1) update to the most recent tf cnn benchmark submodule
-   $ git submodule update --init --recursive
+   > $ git submodule update --init --recursive
 
 2) checkout the right branch compitable to specific tensorflow version
       
